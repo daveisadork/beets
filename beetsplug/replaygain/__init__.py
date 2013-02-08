@@ -100,13 +100,17 @@ class ReplayGainPlugin(BeetsPlugin):
                     )
                 )
         else:
-            # Check whether the program is in $PATH.
-            for cmd in ('mp3gain', 'aacgain'):
-                try:
-                    call([cmd, '-v'])
-                    self.command = cmd
-                except OSError:
-                    pass
+            try:
+                import gst_rgain
+                self.command = 'gst_rgain'
+            except:
+                # Check whether the program is in $PATH.
+                for cmd in ('mp3gain', 'aacgain'):
+                    try:
+                        call([cmd, '-v'])
+                        self.command = cmd
+                    except OSError:
+                        pass
         if not self.command:
             raise ui.UserError(
                 'no replaygain command found: install mp3gain or aacgain'
@@ -187,7 +191,10 @@ class ReplayGainPlugin(BeetsPlugin):
         if all([not self.requires_gain(i, album) for i in items]):
             log.debug(u'replaygain: no gain to compute')
             return
-
+        if self.command == 'gst_rgain':
+            paths = [syspath(i.path) for i in items]
+            import gst_rgain
+            return gst_rgain.compute_rgain(*paths)
         # Construct shell command. The "-o" option makes the output
         # easily parseable (tab-delimited). "-s s" forces gain
         # recalculation even if tags are already present and disables
